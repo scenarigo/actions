@@ -1,0 +1,68 @@
+name: "Scenarigo Install"
+description: "Ensure Go (stable if missing) and install scenarigo CLI if not present or version differs"
+inputs:
+  scenarigo-version:
+    description: "Version of scenarigo CLI to install (e.g. v0.23.0, latest)"
+    required: false
+    default: "latest"
+runs:
+  using: "composite"
+  steps:
+  - name: Detect Go
+    id: detect-go
+    shell: bash
+    run: |
+      set -euo pipefail
+      if command -v go >/dev/null 2>&1; then
+        echo "found=true" >> "$GITHUB_OUTPUT"
+        go version
+      else
+        echo "found=false" >> "$GITHUB_OUTPUT"
+      fi
+
+  - name: Set up Go (fallback to stable)
+    if: ${{ steps.detect-go.outputs.found != 'true' }}
+    uses: actions/setup-go@v5
+    with:
+      go-version: "stable"
+      cache: false
+
+  - name: Ensure scenarigo CLI
+    shell: bash
+    env:
+      GOBIN: ${{ runner.temp }}/scenarigo-bin
+      SCENARIGO_VERSION: ${{ inputs.scenarigo-version }}
+    run: |-
+      set -euo pipefail
+      needs_install="true"
+      current_ver=""
+      current_go=""
+      go_tail=""
+      scenarigo_tail=""
+      if command -v go >/dev/null 2>&1; then
+        go_line="$(go version 2>/dev/null | head -n 1 || true)"
+        go_tail="$(printf "%s" "${go_line}" | awk 'NF>=3 {out=$3; for(i=4;i<=NF;i++){out=out" "$i}; print out}')"
+      fi
+      if command -v scenarigo >/dev/null 2>&1; then
+        current_line="$(scenarigo version 2>/dev/null | head -n 1 || true)"
+        current_ver="$(printf "%s" "${current_line}" | awk 'NF>=3 {print $3}')"
+        current_go="$(printf "%s" "${current_line}" | awk 'NF>=4 {print $4}')"
+        scenarigo_tail="$(printf "%s" "${current_line}" | awk 'NF>=4 {out=$4; for(i=5;i<=NF;i++){out=out" "$i}; print out}')"
+        if [ "${SCENARIGO_VERSION}" = "latest" ]; then
+          needs_install="false"
+          echo "scenarigo already available (current: ${current_ver:-unknown}, go: ${scenarigo_tail:-unknown})"
+        elif [ -n "${current_ver}" ] && [ "${current_ver}" = "${SCENARIGO_VERSION}" ]; then
+          needs_install="false"
+          echo "scenarigo ${current_ver} already available (go: ${scenarigo_tail:-unknown})"
+        fi
+        if [ "${needs_install}" = "false" ] && [ -n "${go_tail}" ] && [ -n "${scenarigo_tail}" ] && [ "${go_tail}" != "${scenarigo_tail}" ]; then
+          echo "scenarigo go version/platform (${scenarigo_tail}) differs from current go (${go_tail}); reinstalling"
+          needs_install="true"
+        fi
+      fi
+      if [ "${needs_install}" = "true" ]; then
+        mkdir -p "${GOBIN}"
+        go install "github.com/scenarigo/scenarigo/cmd/scenarigo@${SCENARIGO_VERSION}"
+        echo "${GOBIN}" >> "$GITHUB_PATH"
+        echo "scenarigo $(scenarigo version)"
+      fi

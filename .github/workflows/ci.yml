@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  pull_request:
+
+jobs:
+  actionlint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-go@v5
+      with:
+        go-version: stable
+    - name: Install actionlint
+      run: go install github.com/rhysd/actionlint/cmd/actionlint@latest
+    - name: Lint workflows
+      run: actionlint
+
+  scenarigo-example:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: scenarigo run (examples/get-repo)
+      uses: ./run
+      with:
+        working-directory: "examples/get-repo"
+        run-args: "--config scenarigo.yaml --parallel 4"
