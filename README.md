@@ -2,18 +2,17 @@
 
 Composite actions for the scenarigo users.
 
-- `install/`: Ensure Go (stable if missing) and install scenarigo CLI (skip when already present with the requested version; `latest` also skips reinstall if present).
 - `run/`: Install dependencies (via `install`) and execute `scenarigo run`.
 - `build-plugin/`: Install dependencies (via `install`), build scenarigo plugins, and expose their paths as outputs.
+- `install/`: Ensure Go (stable if missing) and install scenarigo CLI (skip when already present with the requested version; `latest` also skips reinstall if present).
 
 ## Action: scenarigo/actions/run@v1
 
 Installs scenarigo, optionally builds plugins, and runs scenarios.
 
 ```yaml
-name: CI
+name: Run scenario tests
 on:
-  push:
   pull_request:
 jobs:
   scenarigo:
@@ -25,10 +24,10 @@ jobs:
         with:
           scenarigo-version: "latest" # e.g. v0.23.0
           working-directory: "."
-          run-args: "" # e.g. --config scenarigo.yaml --vars vars.yaml
-          build-plugins: "true"      # set false to skip plugin build
-          build-args: ""             # e.g. --config plugin.yaml
-          list-args: ""              # optional flags for plugin list
+          run-args: ""                # e.g. --config scenarigo.yaml --vars vars.yaml
+          build-plugins: true         # set false to skip plugin build
+          build-args: ""              # e.g. --config plugin.yaml
+          list-args: ""               # optional flags for plugin list
 ```
 
 Inputs:
@@ -50,7 +49,7 @@ Build scenarigo plugins and expose plugin paths via outputs.
 ```yaml
 name: Build Plugins
 on:
-  workflow_dispatch:
+  pull_request:
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -61,9 +60,9 @@ jobs:
         uses: scenarigo/actions/build-plugin@v1
         with:
           scenarigo-version: "latest" # e.g. v0.15.0
-          working-directory: "./plugins"
-          build-args: "" # e.g. --config plugin.yaml
-          list-args: ""  # optional flags for list
+          working-directory: "."
+          build-args: ""              # e.g. --config plugin.yaml
+          list-args: ""               # optional flags for list
       - name: Show plugin paths
         run: |
           echo "Built plugin paths:"
