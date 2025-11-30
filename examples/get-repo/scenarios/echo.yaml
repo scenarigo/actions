@@ -1,0 +1,17 @@
+title: get scenarigo repository
+plugins:
+  plugin: plugin.so
+vars:
+  org: scenarigo
+  repo: '{{plugins.plugin.RepoName}}'
+steps:
+- title: get repository
+  protocol: http
+  request:
+    method: GET
+    url: 'https://api.github.com/repos/{{vars.org}}/{{vars.repo}}'
+  expect:
+    code: OK
+    body:
+      id: '{{int($) > 0}}'
+      name: '{{vars.repo}}'

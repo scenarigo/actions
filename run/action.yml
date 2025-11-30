@@ -1,0 +1,77 @@
+name: "Scenarigo Run"
+description: "Install the scenarigo CLI and execute `scenarigo run` in a target directory"
+inputs:
+  scenarigo-version:
+    description: "Version of scenarigo CLI to install (e.g. v0.15.0, latest)"
+    required: false
+    default: "latest"
+  working-directory:
+    description: "Directory containing scenarigo configuration and scenarios"
+    required: false
+    default: "."
+  run-args:
+    description: "Additional arguments passed to `scenarigo run`"
+    required: false
+    default: ""
+  build-plugins:
+    description: "Whether to build plugins before running scenarios"
+    required: false
+    default: "true"
+  build-args:
+    description: "Additional arguments passed to `scenarigo plugin build` when building plugins"
+    required: false
+    default: ""
+  list-args:
+    description: "Additional arguments passed to `scenarigo plugin list` when building plugins"
+    required: false
+    default: ""
+outputs:
+  plugin-paths:
+    description: "Newline-separated plugin paths built/listed when plugin build runs"
+    value: ${{ steps.set-plugin-paths.outputs.plugin-paths }}
+runs:
+  using: "composite"
+  steps:
+  - name: Install dependencies
+    uses: ./install
+    with:
+      scenarigo-version: ${{ inputs.scenarigo-version }}
+
+  - name: Build plugins
+    id: build-plugins
+    if: ${{ inputs.build-plugins == 'true' }}
+    uses: ./build-plugin
+    with:
+      scenarigo-version: ${{ inputs.scenarigo-version }}
+      working-directory: ${{ inputs.working-directory }}
+      build-args: ${{ inputs.build-args }}
+      list-args: ${{ inputs.list-args }}
+
+  - name: Set plugin paths output
+    id: set-plugin-paths
+    shell: bash
+    env:
+      BUILT_PATHS: ${{ steps.build-plugins.outputs.paths }}
+    run: |
+      set -euo pipefail
+      if [ -n "${BUILT_PATHS}" ]; then
+        printf "plugin-paths<<EOF\n%s\nEOF\n" "${BUILT_PATHS}" >> "$GITHUB_OUTPUT"
+      else
+        echo "plugin-paths=" >> "$GITHUB_OUTPUT"
+      fi
+
+  - name: Run scenarigo
+    shell: bash
+    env:
+      WORKDIR: ${{ inputs.working-directory }}
+      RUN_ARGS: ${{ inputs.run-args }}
+      SCENARIGO_COLOR: true
+    run: |
+      set -euo pipefail
+      echo "Entering directory: ${WORKDIR}"
+      cd "${WORKDIR}"
+      echo "Running: scenarigo run ${RUN_ARGS}"
+      scenarigo run ${RUN_ARGS}
+branding:
+  icon: "play-circle"
+  color: "green"

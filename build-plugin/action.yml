@@ -1,0 +1,61 @@
+name: "Scenarigo Build Plugin"
+description: "Install the scenarigo CLI, build plugins, and expose built plugin paths via outputs"
+inputs:
+  scenarigo-version:
+    description: "Version of scenarigo CLI to install (e.g. v0.15.0, latest)"
+    required: false
+    default: "latest"
+  working-directory:
+    description: "Directory containing scenarigo plugin sources and configuration"
+    required: false
+    default: "."
+  build-args:
+    description: "Additional arguments passed to `scenarigo plugin build`"
+    required: false
+    default: ""
+  list-args:
+    description: "Additional arguments passed to `scenarigo plugin list`"
+    required: false
+    default: ""
+outputs:
+  paths:
+    description: "Newline-separated plugin paths from `scenarigo plugin list`"
+    value: ${{ steps.list-plugins.outputs.paths }}
+runs:
+  using: "composite"
+  steps:
+  - name: Install dependencies
+    uses: ./install
+    with:
+      scenarigo-version: ${{ inputs.scenarigo-version }}
+
+  - name: Build plugins
+    shell: bash
+    env:
+      WORKDIR: ${{ inputs.working-directory }}
+      BUILD_ARGS: ${{ inputs.build-args }}
+      SCENARIGO_COLOR: true
+    run: |
+      set -euo pipefail
+      echo "Entering directory: ${WORKDIR}"
+      cd "${WORKDIR}"
+      echo "Running: scenarigo plugin build ${BUILD_ARGS}"
+      scenarigo plugin build ${BUILD_ARGS}
+
+  - name: List plugins
+    id: list-plugins
+    shell: bash
+    env:
+      WORKDIR: ${{ inputs.working-directory }}
+      LIST_ARGS: ${{ inputs.list-args }}
+    run: |
+      set -euo pipefail
+      cd "${WORKDIR}"
+      echo "Running: scenarigo plugin list ${LIST_ARGS}"
+      paths="$(scenarigo plugin list ${LIST_ARGS})"
+      echo "Plugin paths:"
+      echo "${paths}"
+      printf "paths<<EOF\n%s\nEOF\n" "${paths}" >> "$GITHUB_OUTPUT"
+branding:
+  icon: "package"
+  color: "blue"
