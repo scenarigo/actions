@@ -25,6 +25,14 @@ inputs:
     description: "Additional arguments passed to `scenarigo plugin list` when building plugins"
     required: false
     default: ""
+  report-json:
+    description: "File path for scenarigo JSON report (adds `--report-json` when set)"
+    required: false
+    default: ""
+  report-junit:
+    description: "File path for scenarigo JUnit report (adds `--report-junit` when set)"
+    required: false
+    default: ""
 outputs:
   plugin-paths:
     description: "Newline-separated plugin paths built/listed when plugin build runs"
@@ -61,17 +69,57 @@ runs:
       fi
 
   - name: Run scenarigo
+    id: run-scenarigo
     shell: bash
     env:
       WORKDIR: ${{ inputs.working-directory }}
       RUN_ARGS: ${{ inputs.run-args }}
-      SCENARIGO_COLOR: true
+      REPORT_JSON_PATH: ${{ inputs.report-json }}
+      REPORT_JUNIT_PATH: ${{ inputs.report-junit }}
     run: |
       set -euo pipefail
+      REPORT_JUNIT_ABS=""
+      # Default to colored output, but disable when JUnit is requested to avoid ANSI codes in XML.
+      SCENARIGO_COLOR=true
+      NO_COLOR=""
+      # Build args array to avoid breaking on spaces and to append optional reports.
+      ARGS=()
+      if [ -n "${RUN_ARGS}" ]; then
+        # Users can pass multiple flags via run-args; allow word splitting intentionally.
+        # shellcheck disable=SC2206
+        ARGS+=(${RUN_ARGS})
+      fi
+      if [ -n "${REPORT_JSON_PATH}" ]; then
+        ARGS+=(--report-json "${REPORT_JSON_PATH}")
+      fi
+      if [ -n "${REPORT_JUNIT_PATH}" ]; then
+        case "${REPORT_JUNIT_PATH}" in
+          /*) REPORT_JUNIT_ABS="${REPORT_JUNIT_PATH}" ;;
+          *) REPORT_JUNIT_ABS="$(cd "${WORKDIR}" && pwd)/${REPORT_JUNIT_PATH}" ;;
+        esac
+        ARGS+=(--report-junit "${REPORT_JUNIT_ABS}")
+        printf "report-junit-abs=%s\n" "${REPORT_JUNIT_ABS}" >> "$GITHUB_OUTPUT"
+        SCENARIGO_COLOR=""
+        NO_COLOR=true
+      fi
       echo "Entering directory: ${WORKDIR}"
       cd "${WORKDIR}"
-      echo "Running: scenarigo run ${RUN_ARGS}"
-      scenarigo run ${RUN_ARGS}
+      if [ -n "${SCENARIGO_COLOR}" ]; then
+        export SCENARIGO_COLOR
+      fi
+      if [ -n "${NO_COLOR}" ]; then
+        export NO_COLOR
+      fi
+      echo "Running: scenarigo run ${ARGS[*]}"
+      scenarigo run "${ARGS[@]}"
+  - name: Publish test report
+    if: ${{ !cancelled() && steps.run-scenarigo.outputs.report-junit-abs != '' }}
+    uses: dorny/test-reporter@v1
+    with:
+      name: scenarigo tests
+      path: ${{ steps.run-scenarigo.outputs.report-junit-abs }}
+      reporter: java-junit
+      fail-on-error: false
 branding:
   icon: "play-circle"
   color: "green"

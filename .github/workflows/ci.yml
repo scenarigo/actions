@@ -3,6 +3,11 @@ name: CI
 on:
   pull_request:
 
+permissions:
+  contents: read
+  actions: read
+  checks: write
+
 jobs:
   actionlint:
     runs-on: ubuntu-latest
@@ -25,3 +30,4 @@ jobs:
       with:
         working-directory: "examples/get-repo"
         run-args: "--config scenarigo.yaml --parallel 4"
+        report-junit: report-junit.xml
