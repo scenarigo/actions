@@ -25,6 +25,14 @@ inputs:
     description: "Additional arguments passed to `scenarigo plugin list` when building plugins"
     required: false
     default: ""
+  report-json:
+    description: "File path for scenarigo JSON report (adds `--report-json` when set)"
+    required: false
+    default: ""
+  report-junit:
+    description: "File path for scenarigo JUnit report (adds `--report-junit` when set)"
+    required: false
+    default: ""
 outputs:
   plugin-paths:
     description: "Newline-separated plugin paths built/listed when plugin build runs"
@@ -65,13 +73,28 @@ runs:
     env:
       WORKDIR: ${{ inputs.working-directory }}
       RUN_ARGS: ${{ inputs.run-args }}
+      REPORT_JSON_PATH: ${{ inputs.report-json }}
+      REPORT_JUNIT_PATH: ${{ inputs.report-junit }}
       SCENARIGO_COLOR: true
     run: |
       set -euo pipefail
+      # Build args array to avoid breaking on spaces and to append optional reports.
+      ARGS=()
+      if [ -n "${RUN_ARGS}" ]; then
+        # Users can pass multiple flags via run-args; allow word splitting intentionally.
+        # shellcheck disable=SC2206
+        ARGS+=(${RUN_ARGS})
+      fi
+      if [ -n "${REPORT_JSON_PATH}" ]; then
+        ARGS+=(--report-json "${REPORT_JSON_PATH}")
+      fi
+      if [ -n "${REPORT_JUNIT_PATH}" ]; then
+        ARGS+=(--report-junit "${REPORT_JUNIT_PATH}")
+      fi
       echo "Entering directory: ${WORKDIR}"
       cd "${WORKDIR}"
-      echo "Running: scenarigo run ${RUN_ARGS}"
-      scenarigo run ${RUN_ARGS}
+      echo "Running: scenarigo run ${ARGS[*]}"
+      scenarigo run "${ARGS[@]}"
 branding:
   icon: "play-circle"
   color: "green"

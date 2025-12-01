@@ -25,3 +25,4 @@ jobs:
       with:
         working-directory: "examples/get-repo"
         run-args: "--config scenarigo.yaml --parallel 4"
+        report-junit: report-junit.xml

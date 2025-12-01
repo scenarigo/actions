@@ -28,6 +28,8 @@ jobs:
           build-plugins: true         # set false to skip plugin build
           build-args: ""              # e.g. --config plugin.yaml
           list-args: ""               # optional flags for plugin list
+          report-json: ""             # e.g. report.json (adds --report-json)
+          report-junit: ""            # e.g. report-junit.xml (adds --report-junit)
 ```
 
 Inputs:
@@ -37,6 +39,8 @@ Inputs:
 - `build-plugins`: Whether to build plugins before running (default: `true`).
 - `build-args`: Extra args for `scenarigo plugin build` (default: empty).
 - `list-args`: Extra args for `scenarigo plugin list` (default: empty).
+- `report-json`: File path for scenarigo JSON report; adds `--report-json` when set (default: empty).
+- `report-junit`: File path for scenarigo JUnit report; adds `--report-junit` when set (default: empty).
 - Behavior: Uses the `install` action. If `go` is already available, setup-go is skipped; otherwise installs stable. `scenarigo` installs only when not already present or when version differs (for `latest`, skips reinstall if present). If the `go` version/platform reported by `go version` does not match the tail of `scenarigo version`, scenarigo is reinstalled. Plugin build reuses the same `scenarigo` install.
 
 Outputs:
@@ -78,12 +82,6 @@ Inputs:
 
 Outputs:
 - `paths`: Newline-separated plugin paths returned by `scenarigo plugin list`.
-
-## Notes
-
-- Checkout the target repository before invoking these actions (`actions/checkout@v4`).
-- Provide any required config/vars files via the corresponding args. Add lint/build steps separately in your workflow as needed.
-- A runnable example lives in `examples/get-repo`; CI exercises it via the `run` action.
 
 ## Action: scenarigo/actions/install@v1
 
