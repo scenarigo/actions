@@ -29,7 +29,7 @@ jobs:
           build-args: ""              # e.g. --config plugin.yaml
           list-args: ""               # optional flags for plugin list
           report-json: ""             # e.g. report.json (adds --report-json)
-          report-junit: ""            # e.g. report-junit.xml (adds --report-junit)
+          report-junit: ""            # e.g. report-junit.xml (adds --report-junit and publishes Job Summary)
 ```
 
 Inputs:
@@ -40,7 +40,15 @@ Inputs:
 - `build-args`: Extra args for `scenarigo plugin build` (default: empty).
 - `list-args`: Extra args for `scenarigo plugin list` (default: empty).
 - `report-json`: File path for scenarigo JSON report; adds `--report-json` when set (default: empty).
-- `report-junit`: File path for scenarigo JUnit report; adds `--report-junit` when set (default: empty).
+- `report-junit`: File path for scenarigo JUnit report; adds `--report-junit` when set (default: empty). When provided, the action also runs [`dorny/test-reporter`](https://github.com/dorny/test-reporter) with the JUnit file to publish a job summary. Color output is disabled (`NO_COLOR=true`) when generating JUnit to avoid ANSI codes in the XML.
+- `dorny/test-reporter` requires the following permissions in your workflow when `report-junit` is used:
+
+```yaml
+permissions:
+  contents: read
+  actions: read
+  checks: write
+```
 - Behavior: Uses the `install` action. If `go` is already available, setup-go is skipped; otherwise installs stable. `scenarigo` installs only when not already present or when version differs (for `latest`, skips reinstall if present). If the `go` version/platform reported by `go version` does not match the tail of `scenarigo version`, scenarigo is reinstalled. Plugin build reuses the same `scenarigo` install.
 
 Outputs:
